@@ -6,10 +6,12 @@ def extract_text_from_pdf(pdf_path):
     """Extract text from a PDF file."""
     with open(pdf_path, 'rb') as file:
         reader = PyPDF2.PdfReader(file)
+        # Extract text from all pages of the PDF, joining them with newlines
         return ''.join(page.extract_text() + "\n" for page in reader.pages)
 
 def clean_content(content):
     """Clean the extracted content by removing unnecessary text and empty lines."""
+    content = content.replace('.', '')
     start_index = content.find("© OCR 2023")
     end_index = content.find("END OF QUESTION PAPER")
     
@@ -24,16 +26,18 @@ def clean_content(content):
 
 def process_pdf():
     """Process the PDF file and save the extracted text."""
-    pdf_files = [f for f in os.listdir() if f.lower().endswith('.pdf')]
+    # List comprehension to find PDF files in the current directory
+    # that end with '.pdf' (case-insensitive) and contain 'question' in their name
+    pdf_files = [f for f in os.listdir() if f.lower().endswith('.pdf') and 'question' in f.lower()]
     if not pdf_files:
         print("No PDF files found in the current directory.")
         return
 
     pdf_path = "./" + pdf_files[0]
-    extracted_text = extract_text_from_pdf(pdf_path)
-    cleaned_content = clean_content(extracted_text.replace('.', ''))
+    extracted_questions = extract_text_from_pdf(pdf_path)
+    cleaned_content = clean_content(extracted_questions)
 
-    output_file_path = 'extracted_text.txt'
+    output_file_path = 'extracted_questions.txt'
     
     if not os.path.exists(output_file_path):
         with open(output_file_path, 'w', encoding='utf-8') as output_file:
@@ -44,15 +48,19 @@ def process_pdf():
 
 def analyze_content():
     """Analyze the content of the extracted text file."""
-    with open('extracted_text.txt', 'r', encoding='utf-8') as input_file:
+    with open('extracted_questions.txt', 'r', encoding='utf-8') as input_file:
         content = input_file.read()
 
+    # Define regular expression patterns for identifying different parts of the question structure
     patterns = {
-        'question_stem_line': r'^\d+[\s*].*[a-z].*$',
-        'subquestion_line': r'^\s*\([a-z]+\).*',
-        'marks_line': r'.*\[.*\].*'
+        'question_stem_line': r'^\d+[\s*].*[a-z].*$',  # Matches lines starting with a number, followed by text containing lowercase letters
+        'subquestion_line': r'^\s*\([a-z]+\).*',       # Matches lines starting with a lowercase letter in parentheses
+        'marks_line': r'.*\[.*\].*'                    # Matches lines containing square brackets (typically used for marks)
     }
 
+    # Create a dictionary of match objects for each pattern
+    # Uses re.finditer() to find all non-overlapping matches
+    # re.MULTILINE allows ^ and $ to match line beginnings and ends
     return content, {key: list(re.finditer(pattern, content, re.MULTILINE)) 
                      for key, pattern in patterns.items()}
 
@@ -69,6 +77,8 @@ def select_question(content, matches, question_number):
     start = selected_stem.end()
     end = next_stem.start() if next_stem else len(content)
     
+    # Filter subquestions that fall within the current question's range (between start and end)
+    # and extract the content of the current question
     subquestions = [sq for sq in matches['subquestion_line'] if start <= sq.start() < end]
     question_content = content[start:end].strip()
     
@@ -88,9 +98,7 @@ def display_subquestion(question_content, subquestions, subq_index, start, end):
         lines = [line.strip() for line in subq_text.split('\n') if line.strip()]
         content = [subq.group().strip()]
         
-        for line in lines[1:]:
-            if not re.match(r'^\s*\([a-z]+\)', line):
-                content.append(line)
+        content.extend([line for line in lines[1:] if not re.match(r'^\s*\([a-z]+\)', line)])
         
         return '\n'.join(content)
     else:
@@ -99,6 +107,8 @@ def display_subquestion(question_content, subquestions, subq_index, start, end):
 def main():
     """Main function to process the PDF and display questions."""
     process_pdf()
+    # Analyze the content of the extracted questions file
+    # Returns the full content and a dictionary of regex matches for different question components
     content, matches = analyze_content()
     
     question_stems = matches['question_stem_line']
@@ -117,20 +127,15 @@ def main():
                     print(question_stem)
                     
                     if subquestions:
-                        subq_index = 0
-                        while subq_index < len(subquestions):
+                        for subq_index, subq in enumerate(subquestions):
                             subq_content = display_subquestion(question_content, subquestions, subq_index, start, end)
                             print(subq_content)
                             
+                            # Check if the last line contains marks
                             if re.search(r'.*\[.*\].*', subq_content.split('\n')[-1]):
                                 user_input = input("Press 'q' to quit, or any other key to continue: ").lower()
                                 if user_input == 'q':
                                     break
-                            
-                            subq_index += 1
-                        
-                        if subq_index == len(subquestions):
-                            print("No more subquestions available.")
                     else:
                         print("No subquestions available for this question.")
                 else:
