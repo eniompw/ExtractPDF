@@ -27,6 +27,8 @@ def clean_content(content):
 
 def process_pdf():
     """Process the PDF file and save the extracted text."""
+    # List comprehension to find PDF files in the current directory
+    # that end with '.pdf' (case-insensitive) and contain 'question' in their name
     pdf_files = [f for f in os.listdir() if f.lower().endswith('.pdf') and 'question' in f.lower()]
     if not pdf_files:
         print("No PDF files found in the current directory.")
