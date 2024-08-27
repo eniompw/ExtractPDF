@@ -11,8 +11,9 @@ def extract_text_from_pdf(pdf_path):
 
 def clean_content(content):
     """Clean the extracted content by removing unnecessary text and empty lines."""
+    year = input("Enter the year of the exam paper (e.g., 2023): ")
     content = content.replace('.', '')
-    start_index = content.find("© OCR 2023")
+    start_index = content.find(f"© OCR {year}")
     end_index = content.find("END OF QUESTION PAPER")
     
     if start_index != -1 and end_index != -1:
@@ -20,26 +21,24 @@ def clean_content(content):
     
     return '\n'.join(line for line in content.split('\n') 
                      if line.strip() 
-                     and "Turn  over © OCR 2023" not in line 
-                     and "© OCR 2023" not in line
+                     and f"Turn  over © OCR {year}" not in line 
+                     and f"© OCR {year}" not in line
                      and not line.strip().isdigit())
 
 def process_pdf():
     """Process the PDF file and save the extracted text."""
-    # List comprehension to find PDF files in the current directory
-    # that end with '.pdf' (case-insensitive) and contain 'question' in their name
     pdf_files = [f for f in os.listdir() if f.lower().endswith('.pdf') and 'question' in f.lower()]
     if not pdf_files:
         print("No PDF files found in the current directory.")
         return
 
-    pdf_path = "./" + pdf_files[0]
-    extracted_questions = extract_text_from_pdf(pdf_path)
-    cleaned_content = clean_content(extracted_questions)
-
     output_file_path = 'extracted_questions.txt'
     
     if not os.path.exists(output_file_path):
+        pdf_path = "./" + pdf_files[0]
+        extracted_questions = extract_text_from_pdf(pdf_path)
+        cleaned_content = clean_content(extracted_questions)
+
         with open(output_file_path, 'w', encoding='utf-8') as output_file:
             output_file.write(cleaned_content)
         print(f"Extracted text and saved to '{output_file_path}'.")
@@ -133,8 +132,8 @@ def main():
                             
                             # Check if the last line contains marks
                             if re.search(r'.*\[.*\].*', subq_content.split('\n')[-1]):
-                                user_input = input("Press 'q' to quit, or any other key to continue: ").lower()
-                                if user_input == 'q':
+                                user_input = input("Press 0 to quit, or any other key to continue: ").lower()
+                                if user_input == '0':
                                     break
                     else:
                         print("No subquestions available for this question.")
