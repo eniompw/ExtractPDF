@@ -13,7 +13,6 @@ def clean_content(content):
     """Clean the extracted content by removing unnecessary text and empty lines."""
     content = content.replace('.', '')
     start_index = content.find("Question  Answer  Mark")
-    # Set end_index to the last line of the document
     end_index = len(content)
     
     if start_index != -1 and end_index != -1:
@@ -21,11 +20,23 @@ def clean_content(content):
     
     # Split the content into lines and join them back together with newlines
     return '\n'.join(
-        # Create a new list of lines using a list comprehension
-        line for line in content.split('\n') 
-        # Only include lines that meet both of these conditions:
-        if line.strip()  # 1. The line is not empty after stripping whitespace
+        # Remove leading digits and spaces from lines, keeping only the question number and content
+        re.sub(r'^(\d{2}\s\d)', r'\1', re.sub(r'^\d+\s+(\d+)', r'\1', line))
+        for line in content.split('\n') 
+        if line.strip()  # Only include non-empty lines
     )
+
+def extract_question_line(content):
+    """Extract a specific question line from the content."""
+    pattern = r'^(\d+(?:\s*\([a-z]\))*(?:\s*\([i-v]+\))*)\s*(.*)'
+    question_lines = []
+    
+    for line in content.split('\n'):
+        match = re.match(pattern, line.strip())
+        if match:
+            question_lines.append(line.strip())
+    
+    return question_lines
 
 def process_pdf():
     """Process the PDF file and save the extracted text."""
@@ -50,8 +61,12 @@ def process_pdf():
         print(f"'{output_file_path}' already exists. Skipping extraction.")
 
 def main():
-    """Main function to process the PDF and display questions."""
     process_pdf()
+    with open('extracted_marks.txt', 'r', encoding='utf-8') as file:
+        content = file.read()
+    question_lines = extract_question_line(content)
+    for line in question_lines:
+        print(line)
 
 if __name__ == "__main__":
     main()
